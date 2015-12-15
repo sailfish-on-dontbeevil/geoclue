@@ -4,7 +4,7 @@ Release: 1
 Summary: Geoinformation Service
 Group: System/Libraries
 URL: http://www.freedesktop.org/wiki/Software/GeoClue/
-License: LGPLv2
+License: LGPLv2+
 Source: %{name}-%{version}.tar.gz
 BuildRequires: pkgconfig(glib-2.0)
 BuildRequires: pkgconfig(gobject-2.0)
@@ -44,7 +44,6 @@ Requires: %{name} = %{version}-%{release}
 
 %package provider-example
 Summary: Example provider for %{name}
-Group: System/Libraries
 
 %description provider-example
 %{summary}.
@@ -58,7 +57,6 @@ Group: System/Libraries
 
 %package provider-geonames
 Summary: Geonames provider for %{name}
-Group: System/Libraries
 
 %description provider-geonames
 %{summary}.
@@ -72,7 +70,6 @@ Group: System/Libraries
 
 %package provider-gsmloc
 Summary: Gsmloc provider for %{name}
-Group: System/Libraries
 
 %description provider-gsmloc
 %{summary}.
@@ -86,7 +83,6 @@ Group: System/Libraries
 
 %package provider-hostip
 Summary: Hostip provider for %{name}
-Group: System/Libraries
 
 %description provider-hostip
 %{summary}.
@@ -100,7 +96,6 @@ Group: System/Libraries
 
 %package provider-localnet
 Summary: Localnet provider for %{name}
-Group: System/Libraries
 
 %description provider-localnet
 %{summary}.
@@ -114,7 +109,6 @@ Group: System/Libraries
 
 %package provider-manual
 Summary: Manual provider for %{name}
-Group: System/Libraries
 
 %description provider-manual
 %{summary}.
@@ -128,7 +122,6 @@ Group: System/Libraries
 
 %package provider-nominatim
 Summary: Nominatim provider for %{name}
-Group: System/Libraries
 
 %description provider-nominatim
 %{summary}.
@@ -142,7 +135,6 @@ Group: System/Libraries
 
 %package provider-plazes
 Summary: Plazes provider for %{name}
-Group: System/Libraries
 
 %description provider-plazes
 %{summary}.
@@ -156,7 +148,6 @@ Group: System/Libraries
 
 %package provider-yahoo
 Summary: provider for %{name}
-Group: System/Libraries
 
 %description provider-yahoo
 %{summary}.
@@ -166,8 +157,6 @@ Group: System/Libraries
 %{_datadir}/dbus-1/services/org.freedesktop.Geoclue.Providers.Yahoo.service
 %{_datadir}/geoclue-providers/geoclue-yahoo.provider
 %{_libexecdir}/geoclue-yahoo
-
-
 
 
 %prep
