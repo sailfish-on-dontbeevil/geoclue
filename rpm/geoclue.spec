@@ -12,6 +12,7 @@ BuildRequires: pkgconfig(dbus-glib-1)
 BuildRequires: pkgconfig(libxml-2.0)
 BuildRequires: pkgconfig(gio-2.0)
 BuildRequires: pkgconfig(glib-2.0)
+BuildRequires: pkgconfig(libgps)
 BuildRequires: autoconf
 BuildRequires: libxslt
 
@@ -157,6 +158,20 @@ Summary: provider for %{name}
 %{_datadir}/dbus-1/services/org.freedesktop.Geoclue.Providers.Yahoo.service
 %{_datadir}/geoclue-providers/geoclue-yahoo.provider
 %{_libexecdir}/geoclue-yahoo
+
+%package provider-gpsd
+Summary: provider for %{name}
+Requires: gpsd
+
+%description provider-gpsd
+%{summary}.
+
+%files provider-gpsd
+%defattr(-,root,root,-)
+%{_datadir}/dbus-1/services/org.freedesktop.Geoclue.Providers.Gpsd.service
+%{_datadir}/geoclue-providers/geoclue-gpsd.provider
+%{_libexecdir}/geoclue-gpsd
+
 
 
 %prep

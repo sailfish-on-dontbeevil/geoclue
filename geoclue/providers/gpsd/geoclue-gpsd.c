@@ -4,6 +4,7 @@
  *
  * Authors: Jussi Kukkonen <jku@o-hand.com>
  * Copyright 2007 by Garmin Ltd. or its subsidiaries
+ * Copyright 2019 Chupligin Sergey <s.chupligin@omprussia.ru>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -40,7 +41,9 @@
 #include <geoclue/gc-iface-position.h>
 #include <geoclue/gc-iface-velocity.h>
 
-typedef struct gps_data_t gps_data;
+struct gps_data_t gps_raw_data;
+
+typedef struct gps_data_t gps_data_l;
 typedef struct gps_fix_t gps_fix;
 
 /* only listing used tags */
@@ -59,7 +62,7 @@ typedef struct {
 	char *host;
 	char *port;
 	
-	gps_data *gpsdata;
+	gps_data_l *gpsdata;
 	
 	gps_fix *last_fix;
 	
@@ -155,6 +158,10 @@ set_options (GcIfaceGeoclue *gc,
 		port = DEFAULT_GPSD_PORT;
 	}
 	
+	if (host == NULL) {
+		host = "localhost";
+	}
+	
 	/* new values? */
 	if (g_strcmp0 (host, gpsd->host) != 0 ||
 	    g_strcmp0 (port, gpsd->port) != 0) {
@@ -231,28 +238,27 @@ equal_or_nan (double a, double b)
 static void
 geoclue_gpsd_update_position (GeoclueGpsd *gpsd, NmeaTag nmea_tag)
 {
-	gps_fix *fix = &gpsd->gpsdata->fix;
 	gps_fix *last_fix = gpsd->last_fix;
 	
-	last_fix->time = fix->time;
+	last_fix->time = gps_raw_data.fix.time;
 	
 	/* If a flag is not set, bail out.*/
-	if (!((gpsd->gpsdata->set & LATLON_SET) || (gpsd->gpsdata->set & ALTITUDE_SET))) {
+	if (!((gps_raw_data.set & LATLON_SET) || (gps_raw_data.set & ALTITUDE_SET))) {
 		return;
 	}
-	gpsd->gpsdata->set &= ~(LATLON_SET | ALTITUDE_SET);
+	gps_raw_data.set &= ~(LATLON_SET | ALTITUDE_SET);
 	
-	if (equal_or_nan (fix->latitude, last_fix->latitude) &&
-	    equal_or_nan (fix->longitude, last_fix->longitude) &&
-	    equal_or_nan (fix->altitude, last_fix->altitude)) {
+	if (equal_or_nan (gps_raw_data.fix.latitude, last_fix->latitude) &&
+	    equal_or_nan (gps_raw_data.fix.longitude, last_fix->longitude) &&
+	    equal_or_nan (gps_raw_data.fix.altitude, last_fix->altitude)) {
 		/* position has not changed */
 		return;
 	}
 	
 	/* save values */
-	last_fix->latitude = fix->latitude;
-	last_fix->longitude = fix->longitude;
-	last_fix->altitude = fix->altitude;
+	last_fix->latitude = gps_raw_data.fix.latitude;
+	last_fix->longitude = gps_raw_data.fix.longitude;
+	last_fix->altitude = gps_raw_data.fix.altitude;
 	
 	/* Could use fix.eph for accuracy, but eph is 
 	 * often NaN... what then? 
@@ -264,11 +270,11 @@ geoclue_gpsd_update_position (GeoclueGpsd *gpsd, NmeaTag nmea_tag)
 	                              24, 60);
 	
 	gpsd->last_pos_fields = GEOCLUE_POSITION_FIELDS_NONE;
-	gpsd->last_pos_fields |= (isnan (fix->latitude)) ? 
+	gpsd->last_pos_fields |= (isnan (gps_raw_data.fix.latitude)) ? 
 	                         0 : GEOCLUE_POSITION_FIELDS_LATITUDE;
-	gpsd->last_pos_fields |= (isnan (fix->longitude)) ? 
+	gpsd->last_pos_fields |= (isnan (gps_raw_data.fix.longitude)) ? 
 	                         0 : GEOCLUE_POSITION_FIELDS_LONGITUDE;
-	gpsd->last_pos_fields |= (isnan (fix->altitude)) ? 
+	gpsd->last_pos_fields |= (isnan (gps_raw_data.fix.altitude)) ? 
 	                         0 : GEOCLUE_POSITION_FIELDS_ALTITUDE;
 	
 	gc_iface_position_emit_position_changed 
@@ -282,7 +288,7 @@ geoclue_gpsd_update_position (GeoclueGpsd *gpsd, NmeaTag nmea_tag)
 static void
 geoclue_gpsd_update_velocity (GeoclueGpsd *gpsd, NmeaTag nmea_tag)
 {
-	gps_fix *fix = &gpsd->gpsdata->fix;
+	gps_fix *fix = &gps_raw_data.fix;
 	gps_fix *last_fix = gpsd->last_fix;
 	gboolean changed = FALSE;
 	
@@ -293,10 +299,10 @@ geoclue_gpsd_update_velocity (GeoclueGpsd *gpsd, NmeaTag nmea_tag)
 	 * couldn't think of an smart way to handle this, I don't think there is one
 	 */
 	
-	if (((gpsd->gpsdata->set & TRACK_SET) || (gpsd->gpsdata->set & SPEED_SET)) &&
+	if (((gps_raw_data.set & TRACK_SET) || (gps_raw_data.set & SPEED_SET)) &&
 	    nmea_tag == NMEA_RMC) {
 		
-		gpsd->gpsdata->set &= ~(TRACK_SET | SPEED_SET);
+		gps_raw_data.set &= ~(TRACK_SET | SPEED_SET);
 		
 		last_fix->time = fix->time;
 		
@@ -308,14 +314,14 @@ geoclue_gpsd_update_velocity (GeoclueGpsd *gpsd, NmeaTag nmea_tag)
 			last_fix->track = fix->track;
 			last_fix->speed = fix->speed;
 		}
-	} else if ((gpsd->gpsdata->set & CLIMB_SET) &&
+	} else if ((gps_raw_data.set & CLIMB_SET) &&
 	           (nmea_tag == NMEA_GGA || 
 	            nmea_tag == NMEA_GSA || 
 	            nmea_tag == NMEA_GSV)) {
 		
-		gpsd->gpsdata->set &= ~(CLIMB_SET);
+		gps_raw_data.set &= ~(CLIMB_SET);
 		
-		last_fix->time = fix->time;
+		last_fix->time = gps_raw_data.fix.time;
 		
 		if (!equal_or_nan (fix->climb, last_fix->climb)){
 			
@@ -347,12 +353,12 @@ geoclue_gpsd_update_status (GeoclueGpsd *gpsd, NmeaTag nmea_tag)
 	GeoclueStatus status;
 	
 	/* gpsdata->online is supposedly always up-to-date */
-	if (gpsd->gpsdata->online <= 0) {
+	if (gps_raw_data.online <= 0) {
 		status = GEOCLUE_STATUS_UNAVAILABLE;
-	} else if (gpsd->gpsdata->set & STATUS_SET) {
-		gpsd->gpsdata->set &= ~(STATUS_SET);
+	} else if (gps_raw_data.set & STATUS_SET) {
+		gps_raw_data.set &= ~(STATUS_SET);
 		
-		if (gpsd->gpsdata->status > 0) {
+		if (gps_raw_data.status > 0) {
 			status = GEOCLUE_STATUS_AVAILABLE;
 		} else {
 			status = GEOCLUE_STATUS_ACQUIRING;
@@ -367,9 +373,12 @@ geoclue_gpsd_update_status (GeoclueGpsd *gpsd, NmeaTag nmea_tag)
 static void 
 gpsd_raw_hook (struct gps_data_t *gpsdata, char *message, size_t len)
 {
-	char *tag_str = gpsd->gpsdata->tag;
-	NmeaTag nmea_tag = NMEA_NONE;
+	if(!gps_raw_data.set) {
+		return;
+	}
 	
+	char *tag_str = gps_raw_data.tag;
+	NmeaTag nmea_tag = NMEA_NONE;
 	if (tag_str[0] == 'G' && tag_str[1] == 'S' && tag_str[2] == 'A') {
 		nmea_tag = NMEA_GSA;
 	} else if (tag_str[0] == 'G' && tag_str[1] == 'G' && tag_str[2] == 'A') {
@@ -397,26 +406,27 @@ geoclue_gpsd_stop_gpsd (GeoclueGpsd *self)
 static gboolean
 geoclue_gpsd_start_gpsd (GeoclueGpsd *self)
 {
-	self->gpsdata = gps_open (self->host, self->port);
-	if (self->gpsdata) {
-		gps_stream(self->gpsdata, WATCH_ENABLE | WATCH_NMEA | POLL_NONBLOCK, NULL);
-		gps_set_raw_hook (self->gpsdata, gpsd_raw_hook);
-		return TRUE;
-	} else {
+	int status = gps_open (self->host, self->port, &gps_raw_data);
+	(void)gps_stream(&gps_raw_data, WATCH_ENABLE | WATCH_JSON, NULL);
+	
+	if (status != 0) {
 		g_warning ("gps_open() failed, is gpsd running (host=%s,port=%s)?", self->host, self->port);
 		return FALSE;
 	}
+	return TRUE;
 }
 
 gboolean
 gpsd_poll(gpointer data)
 {
 	GeoclueGpsd *self = (GeoclueGpsd*)data;
-	if (self->gpsdata) {
-		if (gps_poll(self->gpsdata) < 0) {
+	if (gps_waiting(&gps_raw_data, 500)) {
+		if (gps_read(&gps_raw_data) == -1) {
 			geoclue_gpsd_set_status (self, GEOCLUE_STATUS_ERROR);
 			geoclue_gpsd_stop_gpsd(self);
 			return FALSE;
+		} else {
+			gpsd_raw_hook(&gps_raw_data, NULL, 0);
 		}
 	}
 	return TRUE;
