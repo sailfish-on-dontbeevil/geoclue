@@ -236,7 +236,7 @@ equal_or_nan (double a, double b)
 }
 
 static void
-geoclue_gpsd_update_position (GeoclueGpsd *gpsd, NmeaTag nmea_tag)
+geoclue_gpsd_update_position (GeoclueGpsd *gpsd)
 {
 	gps_fix *last_fix = gpsd->last_fix;
 	
@@ -286,7 +286,7 @@ geoclue_gpsd_update_position (GeoclueGpsd *gpsd, NmeaTag nmea_tag)
 }
 
 static void
-geoclue_gpsd_update_velocity (GeoclueGpsd *gpsd, NmeaTag nmea_tag)
+geoclue_gpsd_update_velocity (GeoclueGpsd *gpsd)
 {
 	gps_fix *fix = &gps_raw_data.fix;
 	gps_fix *last_fix = gpsd->last_fix;
@@ -299,8 +299,7 @@ geoclue_gpsd_update_velocity (GeoclueGpsd *gpsd, NmeaTag nmea_tag)
 	 * couldn't think of an smart way to handle this, I don't think there is one
 	 */
 	
-	if (((gps_raw_data.set & TRACK_SET) || (gps_raw_data.set & SPEED_SET)) &&
-	    nmea_tag == NMEA_RMC) {
+	if ((gps_raw_data.set & TRACK_SET) || (gps_raw_data.set & SPEED_SET)) {
 		
 		gps_raw_data.set &= ~(TRACK_SET | SPEED_SET);
 		
@@ -314,10 +313,7 @@ geoclue_gpsd_update_velocity (GeoclueGpsd *gpsd, NmeaTag nmea_tag)
 			last_fix->track = fix->track;
 			last_fix->speed = fix->speed;
 		}
-	} else if ((gps_raw_data.set & CLIMB_SET) &&
-	           (nmea_tag == NMEA_GGA || 
-	            nmea_tag == NMEA_GSA || 
-	            nmea_tag == NMEA_GSV)) {
+	} else if (gps_raw_data.set & CLIMB_SET) {
 		
 		gps_raw_data.set &= ~(CLIMB_SET);
 		
@@ -348,7 +344,7 @@ geoclue_gpsd_update_velocity (GeoclueGpsd *gpsd, NmeaTag nmea_tag)
 }
 
 static void
-geoclue_gpsd_update_status (GeoclueGpsd *gpsd, NmeaTag nmea_tag)
+geoclue_gpsd_update_status (GeoclueGpsd *gpsd)
 {
 	GeoclueStatus status;
 	
@@ -377,21 +373,9 @@ gpsd_raw_hook (struct gps_data_t *gpsdata, char *message, size_t len)
 		return;
 	}
 	
-	char *tag_str = gps_raw_data.tag;
-	NmeaTag nmea_tag = NMEA_NONE;
-	if (tag_str[0] == 'G' && tag_str[1] == 'S' && tag_str[2] == 'A') {
-		nmea_tag = NMEA_GSA;
-	} else if (tag_str[0] == 'G' && tag_str[1] == 'G' && tag_str[2] == 'A') {
-		nmea_tag = NMEA_GGA;
-	} else if (tag_str[0] == 'G' && tag_str[1] == 'S' && tag_str[2] == 'V') {
-		nmea_tag = NMEA_GSV;
-	} else if (tag_str[0] == 'R' && tag_str[1] == 'M' && tag_str[2] == 'C') {
-		nmea_tag = NMEA_RMC;
-	}
-	
-	geoclue_gpsd_update_status (gpsd, nmea_tag);
-	geoclue_gpsd_update_position (gpsd, nmea_tag);
-	geoclue_gpsd_update_velocity (gpsd, nmea_tag);
+	geoclue_gpsd_update_status (gpsd);
+	geoclue_gpsd_update_position (gpsd);
+	geoclue_gpsd_update_velocity (gpsd);
 }
 
 static void
@@ -421,7 +405,7 @@ gpsd_poll(gpointer data)
 {
 	GeoclueGpsd *self = (GeoclueGpsd*)data;
 	if (gps_waiting(&gps_raw_data, 500)) {
-		if (gps_read(&gps_raw_data) == -1) {
+		if (gps_read(&gps_raw_data, NULL, 0) == -1) {
 			geoclue_gpsd_set_status (self, GEOCLUE_STATUS_ERROR);
 			geoclue_gpsd_stop_gpsd(self);
 			return FALSE;

@@ -12,7 +12,7 @@ BuildRequires: pkgconfig(dbus-glib-1)
 BuildRequires: pkgconfig(libxml-2.0)
 BuildRequires: pkgconfig(gio-2.0)
 BuildRequires: pkgconfig(glib-2.0)
-BuildRequires: pkgconfig(libgps)
+BuildRequires: pkgconfig(libgps) >= 3.0
 BuildRequires: autoconf
 BuildRequires: libxslt
 
