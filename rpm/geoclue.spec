@@ -1,5 +1,5 @@
 Name: geoclue
-Version: 0.12.99
+Version: 0.12.100
 Release: 1
 Summary: Geoinformation Service
 Group: System/Libraries
